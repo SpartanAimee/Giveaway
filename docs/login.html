@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logging in…</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0c0d10; color: #eef0f5; font: 15px/1.5 system-ui, sans-serif; padding: 16px; text-align: center; }
+  a { color: #8fb0ff; }
+</style>
+</head>
+<body>
+<div id="msg">Logging in…</div>
+<script>
+(function () {
+  const msg = document.getElementById("msg");
+  const p = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem("wg_state") || "null"); } catch {}
+  const back = saved && saved.back ? saved.back : "./";
+  const show = (text) => {
+    msg.textContent = text + " ";
+    const a = document.createElement("a");
+    a.href = back;
+    a.textContent = "Go back";
+    msg.append(a);
+  };
+  if (p.get("error")) return show(p.get("error_description") || "Twitch login was cancelled.");
+  const token = p.get("access_token");
+  if (!token || !saved || p.get("state") !== saved.state) return show("That login didn't work. Please try again.");
+  try {
+    localStorage.setItem("wg_token", token);
+    localStorage.removeItem("wg_state");
+  } catch {
+    return show("Your browser blocked saving the login. Allow site data for this page and try again.");
+  }
+  location.replace(back);
+})();
+</script>
+</body>
+</html>

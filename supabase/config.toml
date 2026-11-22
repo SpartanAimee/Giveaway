@@ -1,0 +1,2 @@
+[functions.web-giveaway]
+verify_jwt = false
