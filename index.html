@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Giveaway</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="notSetUp" class="notice" hidden>
+  <h2>Almost there</h2>
+  <p>This giveaway page isn't connected yet. Open the <a href="setup.html">setup helper</a> to finish it.</p>
+</div>
+
+<div id="app" hidden>
+  <div class="banner" id="banner"></div>
+  <div class="shell">
+    <aside class="side">
+      <div class="avatar" id="avatar" role="img" aria-label="Channel picture"></div>
+      <h2 id="chName"></h2>
+      <a class="link" id="chLink" target="_blank" rel="noopener"></a>
+      <div class="earn" id="earn"></div>
+      <p class="about" id="about"></p>
+    </aside>
+
+    <main class="main">
+      <div>
+        <div class="eyebrow" id="eyebrow">Loading…</div>
+        <h1 id="title"></h1>
+        <p class="desc" id="desc" hidden></p>
+      </div>
+      <img class="prize" id="prize" alt="Prize" hidden>
+
+      <div class="panel stats" id="stats" hidden>
+        <div><strong id="sPeople">0</strong><span>Entrants</span></div>
+        <div><strong id="sTickets">0</strong><span>Tickets</span></div>
+        <div><strong id="sTime">–</strong><span id="sTimeLbl">Drawn in</span></div>
+      </div>
+
+      <div class="panel enter" id="view" hidden></div>
+      <div class="foot" id="foot" hidden></div>
+    </main>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  if (!WG.configured()) { $("notSetUp").hidden = false; return; }
+  $("app").hidden = false;
+
+  let D = null;
+  let qty = 1;
+  let note = { text: "", type: "" };
+  let busy = false;
+
+  const pn = () => D?.page?.points_name || "Points";
+  const icon = () => {
+    const u = WG.safeUrl(D?.page?.points_icon);
+    return u ? `<img class="picon" src="${u}" alt="">` : "";
+  };
+
+  function paintChannel() {
+    const p = D.page, ch = D.channel;
+    WG.theme(p);
+    const bg = WG.safeUrl(p.background_image);
+    document.body.style.backgroundImage = bg ? `url("${bg}")` : "";
+    const banner = WG.safeUrl(p.banner);
+    $("banner").style.backgroundImage = banner ? `url("${banner}")` : "";
+    const av = WG.safeUrl(p.avatar) || WG.safeUrl(ch.image);
+    $("avatar").style.backgroundImage = av ? `url("${av}")` : "";
+    $("chName").textContent = ch.name;
+    $("chLink").textContent = "twitch.tv/" + ch.login;
+    $("chLink").href = "https://twitch.tv/" + encodeURIComponent(ch.login);
+    document.title = ch.name + " · Giveaway";
+    const earn = $("earn");
+    earn.innerHTML = "";
+    if (p.earn_amount > 0) {
+      const a = document.createElement("p");
+      a.innerHTML = `Earn <b></b> every <b></b> while watching live`;
+      a.querySelectorAll("b")[0].textContent = `${WG.fmt(p.earn_amount)} ${p.points_name}`;
+      a.querySelectorAll("b")[1].textContent = p.earn_minutes === 1 ? "minute" : `${p.earn_minutes} minutes`;
+      earn.append(a);
+    }
+    if (p.chat_points > 0) {
+      const c = document.createElement("p");
+      c.innerHTML = "Chatting earns <b></b> too";
+      c.querySelector("b").textContent = `${WG.fmt(p.chat_points)} ${p.points_name}`;
+      earn.append(c);
+    }
+    $("about").textContent = p.about || "";
+  }
+
+  function paintGiveaway() {
+    const g = D.giveaway;
+    $("stats").hidden = !g;
+    $("desc").hidden = !g?.description;
+    $("desc").textContent = g?.description || "";
+    const prize = WG.safeUrl(g?.prize_image);
+    $("prize").hidden = !prize;
+    if (prize && $("prize").getAttribute("src") !== prize) $("prize").src = prize;
+
+    if (!g) {
+      $("eyebrow").textContent = "No giveaway right now";
+      $("title").textContent = "Check back soon";
+      $("view").hidden = true;
+      paintFoot();
+      return;
+    }
+    $("title").textContent = g.title;
+    $("sPeople").textContent = WG.fmt(D.stats.entrants);
+    $("sTickets").textContent = WG.fmt(D.stats.tickets);
+    const closed = g.status === "open" && g.draw_at && Date.parse(g.draw_at) <= Date.now();
+    if (g.status === "drawn") {
+      $("eyebrow").textContent = "Giveaway ended";
+      $("sTime").textContent = "Done";
+      $("sTimeLbl").textContent = "Drawn";
+    } else if (closed) {
+      $("eyebrow").textContent = "Entries closed";
+      $("sTime").textContent = "Soon";
+      $("sTimeLbl").textContent = "Winner drawn";
+    } else {
+      $("eyebrow").textContent = "Active giveaway";
+      $("sTime").textContent = g.draw_at ? WG.untilText(g.draw_at) : "Live";
+      $("sTimeLbl").textContent = g.draw_at ? "Drawn in" : "Drawn on stream";
+    }
+    paintEnter(closed);
+    paintFoot();
+  }
+
+  function paintEnter(closed) {
+    const g = D.giveaway, v = $("view"), me = D.me;
+    v.hidden = false;
+
+    if (g.status === "drawn") {
+      v.innerHTML = `<div class="winner"><div class="eyebrow">🏆 Winner</div><div class="n"></div><div class="you"></div></div>`;
+      v.querySelector(".n").textContent = g.winner_name;
+      const isMe = me && (me.name.toLowerCase() === String(g.winner_name).toLowerCase() || me.login === String(g.winner_name).toLowerCase());
+      v.querySelector(".you").textContent = isMe ? "That's you! Watch chat for how to claim your prize." :
+        me?.tickets ? `Not this time. You had ${WG.plural(me.tickets, "ticket")}. Thanks for entering!` : "Thanks to everyone who entered!";
+      return;
+    }
+
+    const cost = g.ticket_cost;
+    const priceChip = cost > 0
+      ? `<div class="price">${icon()}<b>${WG.fmt(cost)}</b><span>${esc(pn())} / ticket</span></div>`
+      : `<div class="price"><b>Free</b><span>entry</span></div>`;
+    const when = g.draw_at ? `<div class="you">Winner drawn <b>${esc(WG.whenText(g.draw_at))}</b></div>` : `<div class="you">The winner is drawn live on stream.</div>`;
+    let html = `<div class="row"><h3>Enter the giveaway</h3>${priceChip}</div>${when}`;
+
+    if (!me) {
+      if (closed) { v.innerHTML = html + `<p class="msg muted">Entries are closed. Good luck to everyone who entered!</p>`; return; }
+      v.innerHTML = html + `<div class="buy"><button class="btn twitch" id="login">Log in with Twitch to enter</button></div>
+        <p class="msg muted">We only use this to see your Twitch name and your ${esc(pn())}. We can't post or change anything on your account.</p>`;
+      $("login").onclick = WG.login;
+      return;
+    }
+
+    const maxT = g.max_tickets;
+    const left = maxT ? Math.max(0, maxT - me.tickets) : Infinity;
+    const afford = cost > 0 ? Math.floor(me.points / cost) : Infinity;
+    const room = Math.min(left, afford);
+    const finite = Number.isFinite(room) ? room : 100000;
+    qty = Math.min(Math.max(1, qty | 0), Math.max(1, finite));
+
+    if (cost > 0 || maxT) {
+      html += `<div class="meta"><span>${maxT ? `${WG.fmt(me.tickets)} / ${WG.fmt(maxT)} tickets` : `${WG.plural(me.tickets, "ticket")}`}</span>
+        ${cost > 0 ? `<span>Balance: ${icon()} ${WG.fmt(me.points)} ${esc(pn())}</span>` : ""}</div>`;
+      if (maxT) html += `<div class="bar"><i style="width:${Math.min(100, (me.tickets / maxT) * 100)}%"></i></div>`;
+    }
+    if (me.tickets) {
+      html += `<div class="you"><span>Your tickets <b>${WG.fmt(me.tickets)}</b></span><span>Your chance right now <b>${WG.chance(me.tickets, D.stats.tickets)}</b></span></div>`;
+    }
+
+    let label = "Buy Tickets";
+    if (closed) label = "Entries closed";
+    else if (left <= 0) label = maxT === 1 ? "You're in!" : "Max tickets reached";
+    else if (afford <= 0) label = `Not enough ${pn()}`;
+    else if (cost === 0) label = maxT === 1 ? "Enter" : "Get Tickets";
+    const off = closed || room <= 0 || busy;
+    const showQty = !(cost === 0 && maxT === 1);
+
+    html += `<div class="buy">
+      ${showQty ? `<input id="qty" class="qty" type="number" min="1" ${Number.isFinite(room) ? `max="${Math.max(1, room)}"` : ""} value="${qty}" aria-label="Tickets" ${off ? "disabled" : ""}>
+      ${Number.isFinite(room) ? `<button class="btn ghost small" id="max" ${off ? "disabled" : ""}>Max</button>` : ""}
+      ${cost > 0 ? `<span class="cost">= <b id="cost">${WG.fmt(qty * cost)}</b> ${esc(pn())}</span>` : ""}` : ""}
+      <button class="btn push" id="buy" ${off ? "disabled" : ""}>${esc(label)}</button>
+    </div>`;
+    if (afford <= 0 && left > 0 && !closed && cost > 0 && D.page.earn_amount > 0) {
+      html += `<p class="msg muted">Watch the stream live to earn ${esc(pn())}. You get ${WG.fmt(D.page.earn_amount)} every ${D.page.earn_minutes === 1 ? "minute" : D.page.earn_minutes + " minutes"}.</p>`;
+    }
+    if (D.page.points_source === "streamerbot") {
+      html += `<p class="msg muted small">Your ${esc(pn())} update every few minutes while ${esc(D.channel.name)} is live.</p>`;
+    }
+    html += `<p class="msg ${note.type}" id="note"></p>`;
+    v.innerHTML = html;
+    $("note").textContent = note.text;
+
+    const q = $("qty");
+    if (q) {
+      q.oninput = () => {
+        qty = Math.min(Math.max(1, q.value | 0), Math.max(1, finite));
+        if ($("cost")) $("cost").textContent = WG.fmt(qty * cost);
+      };
+      q.onchange = () => { q.value = qty; };
+    }
+    if ($("max")) $("max").onclick = () => { qty = room; paintEnter(closed); };
+    $("buy").onclick = () => buy(showQty ? qty : 1);
+  }
+
+  function paintFoot() {
+    const f = $("foot");
+    f.hidden = !D.me;
+    if (!D.me) return;
+    f.innerHTML = `<span>Logged in as <b></b></span><button id="logout">Log out</button>`;
+    f.querySelector("b").textContent = D.me.name;
+    $("logout").onclick = WG.logout;
+  }
+
+  async function buy(n) {
+    if (busy) return;
+    busy = true;
+    note = { text: "Buying…", type: "" };
+    paintGiveaway();
+    const r = await WG.api("buy", { qty: n });
+    busy = false;
+    if (r.ok) {
+      const t = WG.plural(r.bought, "ticket");
+      note = { text: D.giveaway.ticket_cost > 0 ? `✓ Bought ${t} for ${WG.fmt(r.cost)} ${pn()}.` : `✓ You're in with ${t}!`, type: "ok" };
+      qty = 1;
+    } else {
+      note = { text: r.error || "That didn't work. Try again.", type: "err" };
+    }
+    await load();
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  async function load() {
+    const r = await WG.api("info");
+    if (!r.ok) {
+      $("eyebrow").textContent = "Something went wrong";
+      $("title").textContent = r.error || "Couldn't load the giveaway.";
+      return;
+    }
+    D = r;
+    paintChannel();
+    if (document.activeElement?.id === "qty") {
+      $("sPeople").textContent = WG.fmt(D.stats.entrants);
+      $("sTickets").textContent = WG.fmt(D.stats.tickets);
+      return;
+    }
+    paintGiveaway();
+  }
+
+  load();
+  setInterval(() => { if (document.visibilityState === "visible" && !busy) load(); }, 30000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !busy) load(); });
+})();
+</script>
+</body>
+</html>

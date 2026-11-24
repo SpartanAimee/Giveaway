@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>Giveaway Overlay</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@500;600&display=swap">
+<style>
+  :root { --accent: #f0b354; }
+  html, body { margin: 0; background: transparent; overflow: hidden; width: 100vw; height: 100vh; font-family: "Inter", system-ui, sans-serif; }
+  .card {
+    position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%);
+    background: rgba(16, 18, 26, .92); color: #fff; border: 3px solid var(--accent); border-radius: 22px;
+    padding: 26px 56px 30px; text-align: center; min-width: 40vw; max-width: 80vw; opacity: 0;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .45), 0 0 40px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .card small { display: block; color: var(--accent); letter-spacing: .16em; text-transform: uppercase; font-size: 2.2vh; font-weight: 700; }
+  .card .title { font-size: 2.2vh; color: #cfd2dc; margin-top: .4vh; }
+  .card .name { font-family: "Space Grotesk", system-ui, sans-serif; font-size: 7.5vh; font-weight: 700; line-height: 1.1; margin: 1vh 0; overflow-wrap: anywhere; }
+  .card .chance { font-size: 2.6vh; color: #cfd2dc; }
+  .card.in { animation: pop .8s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+  .card.out { animation: fade .6s ease forwards; }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, 60px) scale(.85); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+  @keyframes fade { from { opacity: 1; } to { opacity: 0; transform: translate(-50%, 30px); } }
+  canvas { position: absolute; inset: 0; pointer-events: none; }
+  .err { position: absolute; left: 12px; top: 12px; color: #fff; background: #b42318; padding: 8px 12px; border-radius: 8px; font-size: 16px; }
+  @media (prefers-reduced-motion: reduce) { .card.in { animation: none; opacity: 1; } }
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div class="card" id="card">
+  <small>Giveaway winner</small>
+  <div class="title" id="title"></div>
+  <div class="name" id="name"></div>
+  <div class="chance" id="chance"></div>
+</div>
+<div class="err" id="err" hidden></div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const key = new URLSearchParams(location.search).get("key") || "";
+  const SHOW_FOR = 20000;
+  let lastSeen = null;
+  let hideTimer = 0;
+
+  function error(text) { $("err").textContent = text; $("err").hidden = !text; }
+
+  function show(title, name, chance) {
+    $("title").textContent = title;
+    $("name").textContent = name;
+    $("chance").textContent = chance;
+    const c = $("card");
+    c.className = "card";
+    void c.offsetWidth;
+    c.className = "card in";
+    confetti();
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => (c.className = "card out"), SHOW_FOR);
+  }
+
+  function confetti() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const cv = $("fx"), ctx = cv.getContext("2d");
+    cv.width = innerWidth; cv.height = innerHeight;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#f0b354";
+    const colors = [accent, "#ffffff", accent, "#ffd166"];
+    const bits = Array.from({ length: 160 }, () => ({
+      x: cv.width / 2, y: cv.height * 0.75, vx: (Math.random() - 0.5) * 22, vy: -Math.random() * 22 - 8,
+      r: Math.random() * 6 + 4, c: colors[(Math.random() * colors.length) | 0], a: Math.random() * 6, s: (Math.random() - 0.5) * 0.3,
+    }));
+    const start = performance.now();
+    (function frame(t) {
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      for (const b of bits) {
+        b.vy += 0.5; b.vx *= 0.99; b.x += b.vx; b.y += b.vy; b.a += b.s;
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.a); ctx.fillStyle = b.c; ctx.fillRect(-b.r / 2, -b.r / 4, b.r, b.r / 2); ctx.restore();
+      }
+      if (t - start < 4000) requestAnimationFrame(frame); else ctx.clearRect(0, 0, cv.width, cv.height);
+    })(start);
+  }
+
+  async function poll() {
+    if (!WG.configured()) return error("Fill in config.js first (open setup.html on your site).");
+    if (!key) return error("This overlay link is missing its key. Copy it again from the control page.");
+    const r = await WG.api("overlay", { key, token: undefined });
+    if (!r.ok) return error(r.error || "Overlay can't reach the giveaway server.");
+    error("");
+    if (/^#[0-9a-f]{6}$/i.test(r.accent || "")) document.documentElement.style.setProperty("--accent", r.accent);
+
+    const w = r.winner;
+    const times = [w && w.drawn_at, r.test].filter(Boolean).map((t) => Date.parse(t));
+    const newest = times.length ? Math.max(...times) : 0;
+
+    if (lastSeen === null) {
+      lastSeen = Date.parse(r.now) - 60000;
+    }
+    if (newest > lastSeen) {
+      lastSeen = newest;
+      const isTest = r.test && Date.parse(r.test) === newest && !(w && Date.parse(w.drawn_at) === newest);
+      if (isTest) show("Test giveaway", "LuckyViewer123", "with a 4.2% chance");
+      else show(w.title, w.winner_name, w.total_tickets ? `with a ${WG.chance(w.winner_tickets, w.total_tickets)} chance` : "");
+    }
+  }
+
+  poll();
+  setInterval(poll, 5000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Setup Helper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0d1117);--ink:light-dark(#141a22,#eef2f7);--soft:light-dark(#5b6675,#9aa6b6);--line:light-dark(#dfe5ec,#252d3a);--card:light-dark(#f8fafc,#141a23);--accent:#1fb5ec;--accent-ink:light-dark(#0b6f96,#6fd3f7);--gold:#ffc53d;--ok:#16a36a;--warn:#d9480f}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:Outfit,Inter,sans-serif;line-height:1.05;letter-spacing:-.02em;margin:0}
+a{color:var(--accent-ink)}
+code{font:.9em ui-monospace,Consolas,monospace;background:color-mix(in srgb,var(--accent) 12%,transparent);padding:1px 6px;border-radius:6px}
+[hidden]{display:none!important}
+
+.top{max-width:1240px;margin:0 auto;padding:clamp(28px,4vw,48px) max(5vw,16px) 0;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 32px}
+.top h1{font-size:clamp(34px,5vw,48px);font-weight:700}
+.top p{color:var(--soft);max-width:60ch;margin:8px 0 0}
+.tickets{display:flex;gap:10px;padding:6px 4px 10px}
+.tickets span{width:34px;height:22px;border-radius:5px;background:var(--c);position:relative;box-shadow:0 0 14px 2px color-mix(in srgb,var(--c) 50%,transparent);animation:glow 3.2s ease-in-out infinite;animation-delay:calc(var(--i) * .35s)}
+.tickets span::before,.tickets span::after{content:"";position:absolute;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:var(--bg)}
+.tickets span::before{left:-4px}.tickets span::after{right:-4px}
+@keyframes glow{0%,100%{opacity:.45}50%{opacity:1}}
+
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:clamp(20px,3vw,40px);max-width:1240px;margin:0 auto;padding:clamp(24px,3vw,36px) max(5vw,16px) 60px}
+h2{font-size:clamp(24px,3vw,30px);font-weight:600}
+.lead{color:var(--soft);margin:6px 0 16px}
+
+.steps{display:grid;gap:16px}
+.step{border:1px solid var(--line);background:var(--card);border-radius:16px;overflow:hidden;transition:border-color .2s}
+.step.done{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.step header{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.lamp{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;font:700 16px Outfit,sans-serif;background:color-mix(in srgb,var(--accent) 22%,var(--card));color:var(--accent-ink);transition:background .2s,box-shadow .2s}
+.step.done .lamp{background:var(--accent);color:#fff;box-shadow:0 0 18px 4px color-mix(in srgb,var(--accent) 55%,transparent)}
+.step header div{flex:1}
+.step header h3{font-size:20px;font-weight:600}
+.step header small{display:block;font-size:13px;color:var(--soft);margin-top:3px}
+.tick{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--soft)}
+.tick input{width:22px;height:22px;margin:0;accent-color:var(--accent)}
+.step.done .tick{color:var(--accent-ink)}
+.body{display:grid;gap:14px;padding:16px}
+.body>p{margin:0;color:var(--soft)}
+.body>p b{color:var(--ink)}
+.wait{display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px dashed var(--line);border-radius:12px;color:var(--soft);font-size:15px}
+.wait::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--soft);opacity:.5;flex:none}
+
+.row{display:grid;grid-template-columns:170px minmax(0,1fr) auto;gap:8px;align-items:center}
+.row>span{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.val{font:13px/1.4 ui-monospace,Consolas,monospace;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);overflow-wrap:anywhere}
+.val.you{font-family:Inter,sans-serif;font-style:italic;color:var(--soft)}
+pre.val{margin:0;white-space:pre-wrap}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.note{font-size:13px;color:var(--soft);margin:0}
+.note.bad{color:var(--warn)}
+.warnbox{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--gold) 16%,transparent);border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);font-size:14px}
+.warnbox b{white-space:nowrap}
+
+input,button{font:inherit;color:inherit}
+input{font-size:16px;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);width:100%}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:1px}
+button,.btn{height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:var(--ink);font-size:15px}
+button:hover,.btn:hover{border-color:var(--soft)}
+.main{background:var(--accent);border-color:var(--accent);color:#fff}
+.main:hover{filter:brightness(1.08);border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:wait}
+
+.side{position:sticky;top:16px;align-self:start;display:grid;gap:14px}
+.panel{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:16px}
+.side h2{font-size:24px}
+.side .panel>p{color:var(--soft);font-size:14px;margin:6px 0 14px}
+.f{display:grid;gap:4px;margin-bottom:12px}
+.f label{font-weight:600;font-size:14px}
+.f .help{font-size:12px;color:var(--soft)}
+.f .help.bad{color:var(--warn)}
+.f.opt label::after{content:" (optional)";font-weight:400;color:var(--soft)}
+.progress{display:grid;gap:8px}
+.progress b{font:600 20px Outfit,sans-serif}
+.meter{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .3s}
+.private{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--soft);margin:0}
+.reset{background:transparent;border-color:transparent;color:var(--soft);height:auto;padding:4px 0;font-size:13px;justify-content:flex-start}
+
+@media(max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}.side{position:static;order:-1}}
+@media(max-width:640px){.row{grid-template-columns:minmax(0,1fr) auto}.row>span{grid-column:1/-1}.step header{flex-wrap:wrap}.tick{margin-left:50px}}
+@media(prefers-reduced-motion:reduce){.tickets span{animation:none}.lamp,.meter i,.step{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h1>Giveaway setup</h1>
+    <p>Fill in your details and every step below fills itself in, ready to copy and paste. Tick each one off as you go.</p>
+  </div>
+  <div class="tickets" aria-hidden="true">
+    <span style="--c:#1fb5ec;--i:0"></span><span style="--c:#4fd1ff;--i:1"></span><span style="--c:#ffc53d;--i:2"></span><span style="--c:#1fb5ec;--i:3"></span><span style="--c:#7ee0ff;--i:4"></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <main>
+    <h2>Six steps</h2>
+    <p class="lead">Do them in order. Each one shows what to copy as soon as it has the details it needs.</p>
+    <div class="steps">
+
+      <article class="step" data-step="db">
+        <header><span class="lamp">1</span><div><h3>Database</h3><small>Supabase &gt; SQL Editor</small></div><label class="tick"><input type="checkbox"> Done</label></header>
+        <div class="body">
+          <p>Copy the database code, open the SQL editor, paste it in and click <b>Run</b>.</p>
+          <div id="dbOut"></div>
+        </div>
+      </article>
+
+      <article class="step" data-step="twitch">
+        <header><span class="lamp">2</span><div><h3>Twitch app</h3><small>dev.twitch.tv &gt; Register Your Application</small></div><label class="tick"><input type="checkbox"> Done</label></header>
+        <div class="body">
+          <p>Make an app with these <b>OAuth Redirect URLs</b>. Category: <b>Website Integration</b>. Client Type: <b>Confidential</b>.</p>
+          <div id="twOut"></div>
+        </div>
+      </article>
+
+      <article class="step" data-step="config">
+        <header><span class="lamp">3</span><div><h3>config.js</h3><small>Your GitHub copy &gt; docs/config.js</small></div><label class="tick"><input type="checkbox"> Done</label></header>
+        <div class="body">
+          <p>Copy this, open config.js on GitHub, click the pencil, replace everything and click <b>Commit changes</b>.</p>
+          <div id="cfgOut"></div>
+        </div>
+      </article>
+
+      <article class="step" data-step="fn">
+        <header><span class="lamp">4</span><div><h3>Supabase function</h3><small>Edge Functions &gt; Deploy a new function &gt; Via Editor</small></div><label class="tick"><input type="checkbox"> Done</label></header>
+        <div class="body">
+          <p>Name it <code>web-giveaway</code>, paste the code and click <b>Deploy</b>.</p>
+          <div id="fnOut"></div>
+        </div>
+      </article>
+
+      <article class="step" data-step="secrets">
+        <header><span class="lamp">5</span><div><h3>Secrets</h3><small>Edge Functions &gt; Secrets</small></div><label class="tick"><input type="checkbox"> Done</label></header>
+        <div class="body">
+          <p>Add these three, then click <b>Save</b>.</p>
+          <div id="secOut"></div>
+        </div>
+      </article>
+
+      <article class="step" data-step="go">
+        <header><span class="lamp">6</span><div><h3>Log in</h3><small>Your control page</small></div><label class="tick"><input type="checkbox"> Done</label></header>
+        <div class="body">
+          <p>Give GitHub a minute after committing config.js. Then log in, click <b>Connect Twitch</b> and <b>Test chat</b>. Your OBS overlay link is there too.</p>
+          <div id="doneOut"></div>
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <aside class="side">
+    <div class="panel">
+      <h2>Your details</h2>
+      <p>Type these once and the steps fill themselves in.</p>
+      <div class="f"><label for="gh">GitHub username</label><input id="gh" spellcheck="false" autocomplete="off" placeholder="yourname"><div class="help" id="ghHelp"></div></div>
+      <div class="f"><label for="repo">Repository name</label><input id="repo" spellcheck="false" autocomplete="off" placeholder="giveaway"><div class="help" id="repoHelp">Capitals matter</div></div>
+      <div class="f"><label for="sb">Supabase address</label><input id="sb" spellcheck="false" autocomplete="off" placeholder="https://abcdefgh.supabase.co"><div class="help" id="sbHelp">Project Settings &gt; API &gt; Project URL</div></div>
+      <div class="f"><label for="cid">Twitch Client ID</label><input id="cid" spellcheck="false" autocomplete="off" placeholder="After step 2"><div class="help" id="cidHelp">You get this in step 2</div></div>
+      <div class="f"><label for="ch">Twitch channel name</label><input id="ch" spellcheck="false" autocomplete="off" placeholder="yourchannel"><div class="help" id="chHelp"></div></div>
+      <div class="f opt"><label for="dom">Your own domain</label><input id="dom" spellcheck="false" autocomplete="off" placeholder="giveaway.yourname.com"><div class="help" id="domHelp">Only if you've set one up</div></div>
+      <p class="private">&#128274; Nothing you type leaves your browser. Never put your Client Secret here.</p>
+    </div>
+    <div class="panel progress">
+      <div><b id="progText">0 of 6 done</b></div>
+      <div class="meter"><i id="progBar"></i></div>
+      <button class="reset" id="reset" type="button">Start over</button>
+    </div>
+  </aside>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const IDS = ["gh", "repo", "sb", "cid", "ch", "dom"];
+  const SAVE = "wg_setup_helper";
+  const DONE = "wg_setup_done";
+  const get = (k) => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
+  const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const fresh = new URLSearchParams(location.search).has("new");
+  const saved = get(SAVE) || {};
+  const host = location.hostname.toLowerCase();
+  if (!fresh && host.endsWith(".github.io")) {
+    saved.gh = saved.gh || host.slice(0, -10);
+    saved.repo = saved.repo || decodeURIComponent(location.pathname.split("/")[1] || "");
+  }
+  const cfg = fresh ? {} : window.WG_CONFIG || {};
+  if (!saved.sb &&/^https:\/\/[a-z0-9-]+\.supabase\.co/i.test(cfg.supabaseUrl || "") && !/YOUR-PROJECT/i.test(cfg.supabaseUrl)) saved.sb = cfg.supabaseUrl;
+  if (!saved.cid && /^[a-z0-9]{20,40}$/i.test(cfg.twitchClientId || "")) saved.cid = cfg.twitchClientId;
+  IDS.forEach((k) => { if (saved[k]) $(k).value = saved[k]; });
+
+  function supabaseRef(v) {
+    const s = String(v || "").trim();
+    const m = s.match(/^(?:https?:\/\/)?([a-z0-9]{15,30})\.supabase\.co\b/i) || s.match(/supabase\.com\/dashboard\/project\/([a-z0-9]{15,30})/i);
+    if (m) return m[1].toLowerCase();
+    if (/^[a-z0-9]{15,30}$/i.test(s)) return s.toLowerCase();
+    return "";
+  }
+
+  function read() {
+    const v = {};
+    IDS.forEach((k) => (v[k] = $(k).value.trim()));
+    v.gh = v.gh.replace(/^@/, "").replace(/^https?:\/\/github\.com\//i, "").split("/")[0];
+    v.repo = v.repo.replace(/^\/+|\/+$/g, "");
+    v.ch = v.ch.replace(/^@/, "").replace(/^https?:\/\/(www\.)?twitch\.tv\//i, "").split("/")[0].toLowerCase();
+    v.dom = v.dom.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
+    v.ref = supabaseRef(v.sb);
+    v.sbUrl = v.ref ? `https://${v.ref}.supabase.co` : "";
+    v.okGh = /^[a-z0-9][a-z0-9-]{0,38}$/i.test(v.gh);
+    v.okRepo = /^[A-Za-z0-9._-]{1,100}$/.test(v.repo);
+    v.okCid = /^[a-z0-9]{20,40}$/i.test(v.cid);
+    v.okCh = /^[a-z0-9_]{3,25}$/.test(v.ch);
+    v.okDom = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v.dom);
+    v.ghSite = v.okGh && v.okRepo ? `https://${v.gh.toLowerCase()}.github.io/${v.repo}/` : "";
+    v.site = v.okDom ? `https://${v.dom}/` : v.ghSite;
+    v.raw = v.okGh && v.okRepo ? `https://raw.githubusercontent.com/${v.gh}/${v.repo}/main/` : "";
+    return v;
+  }
+
+  function help(id, text, bad) {
+    const el = $(id);
+    el.textContent = text;
+    el.classList.toggle("bad", !!bad);
+  }
+
+  const wait = (what) => `<div class="wait">Add ${what} in Your details first.</div>`;
+  const row = (label, value) => `<div class="row"><span>${esc(label)}</span><div class="val">${esc(value)}</div><button type="button" data-copy="${esc(value)}">Copy</button></div>`;
+  const yourself = (label, text) => `<div class="row"><span>${esc(label)}</span><div class="val you">${esc(text)}</div></div>`;
+  const link = (text, href, main) => `<a class="btn${main ? " main" : ""}" href="${esc(href)}" target="_blank" rel="noopener">${esc(text)} &#8599;</a>`;
+  const fetchBtn = (text, file) => `<button type="button" class="main" data-fetch="${esc(file)}">${esc(text)}</button>`;
+  const grid = (html) => `<div style="display:grid;gap:10px">${html}</div>`;
+
+  function render() {
+    const v = read();
+    const store = {};
+    IDS.forEach((k) => (store[k] = $(k).value.trim()));
+    put(SAVE, store);
+
+    help("ghHelp", v.gh && !v.okGh ? "That doesn't look like a GitHub username" : "", v.gh && !v.okGh);
+    help("repoHelp", v.repo && !v.okRepo ? "Just the name, like giveaway" : "Capitals matter", v.repo && !v.okRepo);
+    help("sbHelp", v.sb && !v.ref ? "Paste the address that ends in .supabase.co" : v.ref ? "✓ Project " + v.ref : "Project Settings > API > Project URL", v.sb && !v.ref);
+    help("cidHelp", v.cid && !v.okCid ? "A Client ID is 20 to 40 letters and numbers" : v.okCid ? "✓ Looks right" : "You get this in step 2", v.cid && !v.okCid);
+    help("chHelp", v.ch && !v.okCh ? "Just your channel name, like yourchannel" : "", v.ch && !v.okCh);
+    help("domHelp", v.dom && !v.okDom ? "Just the domain, like giveaway.yourname.com" : "Only if you've set one up", v.dom && !v.okDom);
+
+    const needRepoSb = "your GitHub username, repository and Supabase address";
+
+    $("dbOut").innerHTML = v.ref && v.raw
+      ? grid(`<div class="acts">${fetchBtn("Copy database code", "supabase/setup.sql")}${link("Open SQL editor", `https://supabase.com/dashboard/project/${v.ref}/sql/new`)}</div><p class="note">Running it again later is always safe.</p>`)
+      : wait(needRepoSb);
+
+    if (v.site && v.sbUrl) {
+      let h = "";
+      if (v.ghSite) h += row("Website login", v.ghSite + "login.html");
+      if (v.okDom) h += row("Own domain login", v.site + "login.html");
+      h += row("Connect Twitch", v.sbUrl + "/functions/v1/web-giveaway");
+      h += `<div class="acts">${link("Open Twitch console", "https://dev.twitch.tv/console/apps/create")}</div>`;
+      h += `<p class="note">Then click <b>Manage</b>. Put the <b>Client ID</b> in Your details, and click <b>New Secret</b>. Keep the secret somewhere safe for step 5.</p>`;
+      $("twOut").innerHTML = grid(h);
+    } else $("twOut").innerHTML = wait(needRepoSb);
+
+    if (v.sbUrl && v.okCid && v.okGh && v.okRepo) {
+      const text = `window.WG_CONFIG = {
+  supabaseUrl: "${v.sbUrl}",
+  twitchClientId: "${v.cid}",
+};
+`;
+      $("cfgOut").innerHTML = grid(`<pre class="val">${esc(text)}</pre><div class="acts"><button type="button" class="main" data-copy="${esc(text)}">Copy config.js</button>${link("Open config.js on GitHub", `https://github.com/${v.gh}/${v.repo}/edit/main/docs/config.js`)}</div>`);
+    } else $("cfgOut").innerHTML = wait("your GitHub details, Supabase address and Twitch Client ID");
+
+    $("fnOut").innerHTML = v.ref && v.raw
+      ? grid(`<div class="acts">${fetchBtn("Copy function code", "supabase/functions/web-giveaway/index.ts")}${link("Open Edge Functions", `https://supabase.com/dashboard/project/${v.ref}/functions`)}</div>
+        <div class="warnbox"><b>Don't skip:</b><span>after deploying, open the function's <b>Details</b> and turn <b>off Verify JWT</b>, then save.</span></div>
+        <p class="note">The first line of the code is <code>// FFY Web Giveaway</code>. If you see <code>&lt;!doctype html&gt;</code> instead, copy it again.</p>`)
+      : wait(needRepoSb);
+
+    if (v.ref && v.okCid && v.okCh) {
+      $("secOut").innerHTML = grid(row("TWITCH_CLIENT_ID", v.cid) + row("TWITCH_CHANNEL", v.ch)
+        + yourself("TWITCH_CLIENT_SECRET", "Paste your secret from Twitch yourself")
+        + `<div class="acts">${link("Open Secrets", `https://supabase.com/dashboard/project/${v.ref}/functions/secrets`)}</div>`);
+    } else $("secOut").innerHTML = wait("your Supabase address, Twitch Client ID and channel name");
+
+    $("doneOut").innerHTML = v.site
+      ? grid(row("Control page", v.site + "control.html") + row("Viewer page", v.site) + `<div class="acts">${link("Open control page", v.site + "control.html", true)}</div>`)
+      : wait("your GitHub username and repository");
+  }
+
+  const steps = [...document.querySelectorAll(".step")];
+  function paintDone() {
+    const done = get(DONE) || {};
+    let n = 0;
+    steps.forEach((s) => {
+      const on = !!done[s.dataset.step];
+      s.classList.toggle("done", on);
+      s.querySelector(".tick input").checked = on;
+      if (on) n++;
+    });
+    $("progText").textContent = n === steps.length ? "All done! \u{1F389}" : `${n} of ${steps.length} done`;
+    $("progBar").style.width = (n / steps.length) * 100 + "%";
+  }
+  steps.forEach((s) => s.querySelector(".tick input").addEventListener("change", (e) => {
+    const done = get(DONE) || {};
+    done[s.dataset.step] = e.target.checked;
+    put(DONE, done);
+    paintDone();
+  }));
+  $("reset").addEventListener("click", () => {
+    if (!confirm("Clear your details and ticks?")) return;
+    try { localStorage.removeItem(SAVE); localStorage.removeItem(DONE); } catch {}
+    location.reload();
+  });
+
+  function flash(btn, text, ms) {
+    const was = btn.dataset.label || (btn.dataset.label = btn.textContent);
+    btn.textContent = text;
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => (btn.textContent = was), ms || 1600);
+  }
+
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.copy != null) {
+      try { await navigator.clipboard.writeText(b.dataset.copy); flash(b, "Copied ✓"); }
+      catch { flash(b, "Couldn't copy"); }
+      return;
+    }
+    if (b.dataset.fetch) {
+      const url = read().raw + b.dataset.fetch;
+      b.disabled = true;
+      flash(b, "Getting it…", 60000);
+      const old = b.parentElement.parentElement.querySelector(".note.bad");
+      if (old) old.remove();
+      try {
+        const r = await fetch(url, { cache: "no-store" });
+        if (!r.ok) throw new Error(r.status);
+        const text = await r.text();
+        if (/^\s*<!doctype/i.test(text)) throw new Error("html");
+        await navigator.clipboard.writeText(text);
+        flash(b, "Copied ✓", 2000);
+      } catch {
+        flash(b, "Couldn't get it", 2000);
+        const n = document.createElement("p");
+        n.className = "note bad";
+        n.innerHTML = `Check your repository is <b>Public</b> and the name is right, or open <a href="${esc(url)}" target="_blank" rel="noopener">the file</a> and copy it all yourself.`;
+        b.parentElement.after(n);
+      }
+      b.disabled = false;
+    }
+  });
+
+  IDS.forEach((k) => $(k).addEventListener("input", render));
+  render();
+  paintDone();
+})();
+</script>
+</body>
+</html>

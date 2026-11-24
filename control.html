@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Giveaway Control</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 60px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .top h1 { font-size: 24px; }
+  .panel h2 { font-size: 17px; margin-bottom: 4px; }
+  .panel > .sub { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; }
+  label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); min-width: 0; }
+  label input:not([type="checkbox"]):not([type="color"]), label select, label textarea { width: 100%; }
+  .check { flex-direction: row; align-items: center; gap: 8px; color: var(--fg); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); }
+  .dot.on { background: var(--ok); }
+  .images { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+  .img { display: flex; flex-direction: column; gap: 6px; }
+  .img .pv { height: 90px; border-radius: 10px; border: 1px dashed var(--line); background: var(--bg) center / cover no-repeat; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+  .img .pv.contain { background-size: contain; }
+  .img .pv.wide { height: auto; aspect-ratio: 16 / 3; }
+  .img .pv.square { height: 90px; width: 90px; }
+  .guide { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .guide b { color: var(--fg); font-weight: 600; }
+  .img .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .table { overflow-x: auto; max-height: 360px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .copy { display: flex; gap: 8px; flex-wrap: wrap; }
+  .copy input { flex: 1 1 260px; min-width: 0; font-size: 12px; }
+  .big { font-family: var(--display); font-size: 28px; font-weight: 700; color: var(--accent); overflow-wrap: anywhere; }
+  .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; max-width: calc(100% - 32px); z-index: 10; }
+  .toast.err { background: var(--bad); color: #fff; }
+  .confirm { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 11;
+    background: var(--panel); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 16px; display: flex; gap: 14px; align-items: center;
+    flex-wrap: wrap; width: max-content; max-width: calc(100% - 32px); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+</style>
+</head>
+<body>
+
+<div id="notSetUp" class="notice" hidden>
+  <h2>Almost there</h2>
+  <p>Open the <a href="setup.html">setup helper</a> to fill in config.js and finish setting up.</p>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <div class="top">
+    <h1>Giveaway Control</h1>
+    <div class="foot" id="who"></div>
+  </div>
+
+  <div class="panel" id="gate" hidden></div>
+
+  <div id="main" hidden style="display:flex;flex-direction:column;gap:16px">
+
+    <section class="panel">
+      <h2>Twitch</h2>
+      <p class="sub">Lets the giveaway post in your chat and see who's watching (to give points).</p>
+      <div class="row">
+        <span class="status"><span class="dot" id="connDot"></span><span id="connText"></span></span>
+        <div class="actions" style="margin:0">
+          <button class="btn small" id="connect">Connect Twitch</button>
+          <button class="btn ghost small" id="testChat">Test chat</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="gNone">
+      <h2>Start a giveaway</h2>
+      <p class="sub">Only one giveaway runs at a time. Viewers enter on your giveaway page, even while you're offline.</p>
+      <div class="grid">
+        <label>Prize / title<input id="gTitle" maxlength="80" placeholder="Steam Gift Card £25"></label>
+        <label>Draw date (optional)<input id="gDraw" type="datetime-local"></label>
+        <label>Ticket cost (<span class="pn">Points</span>, 0 = free)<input id="gCost" type="number" min="0" value="20"></label>
+        <label>Max tickets per viewer (0 = no limit)<input id="gMax" type="number" min="0" value="10"></label>
+      </div>
+      <label style="margin-top:12px">Description (optional)<textarea id="gDesc" maxlength="500" placeholder="Rules, region, how to claim…"></textarea></label>
+      <div class="images" style="margin-top:12px">
+        <div class="img">
+          <span class="small muted">Prize image (optional)</span><span class="guide"><b>1200 × 600</b> px · wide (2:1). Shown up to 320 px tall above the entry box; taller images get cropped.</span>
+          <div class="pv" id="pvPrize">No image</div>
+          <div class="btns"><button class="btn ghost small" data-pick="prize">Upload</button><button class="btn ghost small" data-clear="prize">Remove</button></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="start">Start giveaway</button>
+        <span class="msg muted small">Entries close at the draw date. You still press Draw yourself.</span>
+      </div>
+    </section>
+
+    <section class="panel" id="gOpen" hidden>
+      <div class="row">
+        <div><div class="eyebrow" id="gState">Running</div><h2 id="gName" style="font-size:22px"></h2></div>
+        <a class="btn ghost small" id="viewPage" target="_blank" rel="noopener">View page</a>
+      </div>
+      <div class="stats" style="margin:16px 0">
+        <div><strong id="sPeople">0</strong><span>Entrants</span></div>
+        <div><strong id="sTickets">0</strong><span>Tickets</span></div>
+        <div><strong id="sTime">–</strong><span id="sTimeLbl">Draw</span></div>
+      </div>
+      <div id="winnerBox" hidden style="text-align:center;margin-bottom:16px">
+        <div class="eyebrow">🏆 Winner</div>
+        <div class="big" id="winnerName"></div>
+        <div class="muted" id="winnerInfo"></div>
+      </div>
+      <div class="actions" style="margin:0 0 16px">
+        <button class="btn" id="draw">Draw winner</button>
+        <button class="btn ghost" id="redraw" hidden>Draw again</button>
+        <button class="btn ghost" id="finish" hidden>Finish &amp; start a new one</button>
+        <button class="btn danger" id="cancel">Cancel &amp; refund</button>
+      </div>
+      <div class="table"><table>
+        <thead><tr><th>Viewer</th><th class="num">Tickets</th><th class="num">Chance</th><th class="num">Spent</th></tr></thead>
+        <tbody id="entries"></tbody>
+      </table></div>
+    </section>
+
+    <section class="panel">
+      <h2>Page look</h2>
+      <p class="sub">Images upload straight away. Click Save for colours and text. PNG, JPG, GIF or WebP, up to 3 MB. Keep them small (under about 300 KB) so your page loads quickly: crop to the size shown and save photos as JPG or WebP.</p>
+      <div class="images">
+        <div class="img"><span class="small muted">Banner</span><span class="guide"><b>1600 × 300</b> px · wide strip across the top. The middle stays visible on phones; the sides get cut off.</span><div class="pv wide" id="pvBanner">None</div>
+          <div class="btns"><button class="btn ghost small" data-pick="banner">Upload</button><button class="btn ghost small" data-clear="banner">Remove</button></div></div>
+        <div class="img"><span class="small muted">Profile picture</span><span class="guide"><b>400 × 400</b> px · square. Shown at 120 px, so a logo with some space around it works best.</span><div class="pv square" id="pvAvatar">Uses Twitch</div>
+          <div class="btns"><button class="btn ghost small" data-pick="avatar">Upload</button><button class="btn ghost small" data-clear="avatar">Use Twitch</button></div></div>
+        <div class="img"><span class="small muted">Background image</span><span class="guide"><b>1920 × 1080</b> px · fills the whole page behind everything. Darker or blurry images keep text easy to read.</span><div class="pv" id="pvBackground">None</div>
+          <div class="btns"><button class="btn ghost small" data-pick="background_image">Upload</button><button class="btn ghost small" data-clear="background_image">Remove</button></div></div>
+        <div class="img"><span class="small muted">Points icon</span><span class="guide"><b>64 × 64</b> px · square PNG with a see-through background. Shown tiny, next to prices and balances.</span><div class="pv contain square" id="pvIcon">None</div>
+          <div class="btns"><button class="btn ghost small" data-pick="points_icon">Upload</button><button class="btn ghost small" data-clear="points_icon">Remove</button></div></div>
+      </div>
+      <div class="grid" style="margin-top:14px">
+        <label>Accent colour<input id="accent" type="color"></label>
+        <label>Background colour<input id="background" type="color"></label>
+      </div>
+      <label style="margin-top:12px">About (shown under your name)<textarea id="about" maxlength="300"></textarea></label>
+    </section>
+
+    <section class="panel">
+      <h2>Points</h2>
+      <div id="srcSb">
+        <p class="sub">Points come from FFY_Points in Streamer.bot. Viewers earn them while you're live, and this site lets them spend them on tickets while you're offline. Streamer.bot sends balances here every few minutes while you're live and once more when you go offline, and takes off tickets bought on the website. Points name and earning come from your FFY_Points settings.</p>
+        <span class="small muted">1. Copy this link</span>
+        <div class="copy" style="margin:6px 0 12px"><input id="syncLink" readonly><button class="btn small" id="syncCopy">Copy</button></div>
+        <span class="small muted">2. Open the <a href="points-builder.html" target="_blank" rel="noopener">web giveaway Points Builder</a>, paste it into <b>Web Giveaway link</b>, make the import and import it into Streamer.bot. Use this builder, not the normal FFY Points one, because only this one has the link. Your points are kept.</span>
+        <p class="msg small" id="syncInfo" style="margin-top:12px"></p>
+        <div class="actions" style="margin-top:6px"><button class="btn small" id="syncNew">Make a new link</button></div>
+      </div>
+      <h3 style="font-size:14px;margin:18px 0 8px">Give or take points</h3>
+      <div class="actions" style="margin:0">
+        <input id="gpName" placeholder="Twitch name" style="flex:1 1 160px;min-width:0">
+        <input id="gpAmount" type="number" placeholder="500 or -500" style="flex:0 1 140px;min-width:0">
+        <button class="btn ghost small" id="gpGo">Apply</button>
+        <button class="btn ghost small" id="gpCheck">Check balance</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Chat messages</h2>
+      <div class="grid">
+        <label class="check"><input type="checkbox" id="chatStart"> When a giveaway starts or is cancelled</label>
+        <label class="check"><input type="checkbox" id="chatEntry"> Every time someone buys tickets</label>
+        <label class="check"><input type="checkbox" id="chatWinner"> When a winner is drawn</label>
+      </div>
+    </section>
+
+    <div class="actions" style="margin:0"><button class="btn" id="save">Save look, points &amp; chat</button></div>
+
+    <section class="panel">
+      <h2>OBS overlay</h2>
+      <p class="sub">Add a Browser Source in OBS with this link (width 1920, height 1080). It shows the winner when you draw. Keep the link private.</p>
+      <div class="copy"><input id="ovLink" readonly><button class="btn small" id="ovCopy">Copy</button></div>
+      <div class="actions">
+        <button class="btn ghost small" id="ovTest">Show a test winner</button>
+        <button class="btn ghost small" id="ovNew">Make a new link</button>
+      </div>
+      <h3 style="font-size:14px;margin:18px 0 8px">Your giveaway page</h3>
+      <div class="copy"><input id="pageLink" readonly><button class="btn small" id="pageCopy">Copy</button></div>
+    </section>
+  </div>
+</div>
+
+<input type="file" id="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+<div class="toast" id="toast" hidden></div>
+<div class="confirm" id="confirmBox" hidden>
+  <span id="confirmText"></span>
+  <span class="row" style="gap:8px"><button class="btn small" id="confirmYes">Yes</button><button class="btn ghost small" id="confirmNo">No</button></span>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  if (!WG.configured()) { $("notSetUp").hidden = false; return; }
+  $("app").hidden = false;
+
+  const PAGE_URL = WG.BASE;
+  let D = null;
+  let prizeUrl = "";
+  let pickSlot = "";
+  let toastTimer = 0;
+
+  function toast(text, bad) {
+    const t = $("toast");
+    t.textContent = text;
+    t.className = "toast" + (bad ? " err" : "");
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (t.hidden = true), bad ? 6000 : 3000);
+  }
+
+  async function call(action, data, btn) {
+    if (btn) btn.disabled = true;
+    const r = await WG.api(action, data);
+    if (btn) btn.disabled = false;
+    if (!r.ok) {
+      toast(r.error || "That didn't work.", true);
+      if (r.reason === "login" || r.reason === "not-owner") load();
+    }
+    return r;
+  }
+
+  function showGate(html) {
+    $("main").hidden = true;
+    $("gate").hidden = false;
+    $("gate").innerHTML = html;
+  }
+
+  function paintWho() {
+    const w = $("who");
+    if (!WG.store.get(WG.TOKEN)) { w.innerHTML = ""; return; }
+    w.innerHTML = `<button id="logout">Log out</button>`;
+    $("logout").onclick = WG.logout;
+  }
+
+  function connectResult() {
+    const q = new URLSearchParams(location.search);
+    if (q.get("error")) toast(q.get("error"), true);
+    else if (q.get("warning")) toast(q.get("warning"), true);
+    else if (q.get("connected")) toast("Twitch connected.");
+    if (q.toString()) history.replaceState(null, "", location.pathname);
+  }
+
+  function setPv(id, url, empty) {
+    const el = $(id);
+    const u = WG.safeUrl(url);
+    el.style.backgroundImage = u ? `url("${u}")` : "";
+    el.textContent = u ? "" : empty;
+  }
+
+  function fillSettings() {
+    const s = D.settings;
+    WG.theme(s);
+    document.querySelectorAll(".pn").forEach((e) => (e.textContent = pointsName()));
+    setPv("pvBanner", s.banner, "None");
+    setPv("pvAvatar", s.avatar || D.channel.image, "Uses Twitch");
+    setPv("pvBackground", s.background_image, "None");
+    setPv("pvIcon", s.points_icon, "None");
+    $("accent").value = s.accent;
+    $("background").value = s.background;
+    $("about").value = s.about;
+    $("syncLink").value = D.syncLink || "";
+    paintSource();
+    $("chatStart").checked = s.chat_start;
+    $("chatEntry").checked = s.chat_entry;
+    $("chatWinner").checked = s.chat_winner;
+    $("ovLink").value = `${WG.BASE}overlay.html?key=${D.overlayKey}`;
+    $("pageLink").value = PAGE_URL;
+    $("viewPage").href = PAGE_URL;
+  }
+
+  function pointsName() {
+    return D.sbInfo && D.sbInfo.points_name ? D.sbInfo.points_name : D.settings.points_name;
+  }
+
+  function paintSource() {
+    const info = $("syncInfo");
+    if (!D.lastSync) {
+      info.className = "msg small err";
+      info.textContent = "Streamer.bot hasn't connected yet. It sends balances while you're live, a few minutes after you go live.";
+    } else {
+      const mins = Math.round((Date.now() - Date.parse(D.lastSync)) / 60000);
+      info.className = "msg small " + (mins <= 10 ? "ok" : "muted");
+      info.textContent = "Last update from Streamer.bot: " + (mins < 1 ? "just now" : mins < 120 ? mins + " min ago" : new Date(D.lastSync).toLocaleString()) + ".";
+    }
+  }
+
+  function paintConnection() {
+    const on = D.connected && !D.missingScopes.length;
+    $("connDot").className = "dot" + (on ? " on" : "");
+    $("connText").textContent = on ? `Connected as ${D.channel.name}` : D.connected ? "Needs reconnecting (new permissions)" : "Not connected";
+    $("connect").textContent = D.connected ? "Reconnect" : "Connect Twitch";
+    $("connect").className = "btn small" + (on ? " ghost" : "");
+    $("testChat").hidden = !D.connected;
+  }
+
+  function paintGiveaway() {
+    const g = D.giveaway;
+    $("gNone").hidden = !!g;
+    $("gOpen").hidden = !g;
+    if (!g) return;
+    $("gName").textContent = g.title;
+    $("sPeople").textContent = WG.fmt(D.stats.entrants);
+    $("sTickets").textContent = WG.fmt(D.stats.tickets);
+    const drawn = g.status === "drawn";
+    const closed = !drawn && g.draw_at && Date.parse(g.draw_at) <= Date.now();
+    $("gState").textContent = drawn ? "Winner drawn" : closed ? "Entries closed, ready to draw" : "Running";
+    $("sTime").textContent = drawn ? "Done" : g.draw_at ? (closed ? "Now" : WG.untilText(g.draw_at)) : "Any time";
+    $("sTimeLbl").textContent = drawn ? "Drawn" : "Draw";
+    $("winnerBox").hidden = !drawn;
+    if (drawn) {
+      $("winnerName").textContent = g.winner_name;
+      $("winnerInfo").textContent = `${WG.plural(g.winner_tickets, "ticket")} · ${WG.chance(g.winner_tickets, g.total_tickets)} chance`;
+    }
+    $("draw").hidden = drawn;
+    $("redraw").hidden = !drawn;
+    $("finish").hidden = !drawn;
+    $("cancel").hidden = drawn;
+    const pn = D.settings.points_name;
+    const tb = $("entries");
+    tb.innerHTML = "";
+    if (!D.entries.length) {
+      tb.innerHTML = `<tr><td colspan="4" class="muted">Nobody has entered yet.</td></tr>`;
+      return;
+    }
+    for (const e of D.entries) {
+      const tr = document.createElement("tr");
+      const cells = [e.display_name || e.login, WG.fmt(e.tickets), WG.chance(e.tickets, D.stats.tickets), `${WG.fmt(e.spent)} ${pn}`];
+      cells.forEach((c, i) => { const td = document.createElement("td"); td.textContent = c; if (i) td.className = "num"; tr.append(td); });
+      tb.append(tr);
+    }
+  }
+
+  async function load() {
+    paintWho();
+    if (!WG.store.get(WG.TOKEN)) {
+      showGate(`<h2>Log in</h2><p class="sub">Log in with the Twitch account this giveaway is set up for.</p>
+        <button class="btn twitch" id="login">Log in with Twitch</button>`);
+      $("login").onclick = WG.login;
+      return;
+    }
+    const r = await WG.api("admin");
+    if (!r.ok) {
+      if (r.reason === "login") return load();
+      showGate(`<h2>Can't open the control page</h2><p class="sub"></p><button class="btn ghost" id="lo">Log in with a different account</button>`);
+      $("gate").querySelector(".sub").textContent = r.error || "Something went wrong.";
+      $("lo").onclick = WG.logout;
+      return;
+    }
+    D = r;
+    $("gate").hidden = true;
+    $("main").hidden = false;
+    fillSettings();
+    paintConnection();
+    paintGiveaway();
+  }
+
+  async function refresh() {
+    if (!D || document.visibilityState !== "visible") return;
+    const r = await WG.api("admin");
+    if (!r.ok) return;
+    D.giveaway = r.giveaway; D.stats = r.stats; D.entries = r.entries;
+    D.connected = r.connected; D.missingScopes = r.missingScopes; D.lastSync = r.lastSync; D.sbInfo = r.sbInfo;
+    paintConnection();
+    paintSource();
+    paintGiveaway();
+  }
+
+  $("connect").onclick = async (e) => {
+    const r = await call("connect", { back: location.href.split("?")[0].split("#")[0] }, e.target);
+    if (r.ok) location.href = r.url;
+  };
+  $("testChat").onclick = async (e) => { if ((await call("test-chat", {}, e.target)).ok) toast("Sent a test message to your chat."); };
+
+  document.querySelectorAll("[data-pick]").forEach((b) => (b.onclick = () => { pickSlot = b.dataset.pick; $("file").value = ""; $("file").click(); }));
+  document.querySelectorAll("[data-clear]").forEach((b) => (b.onclick = async () => {
+    const slot = b.dataset.clear;
+    if (slot === "prize") { prizeUrl = ""; setPv("pvPrize", "", "No image"); return; }
+    const r = await call("save-page", { page: { [slot]: "" } }, b);
+    if (r.ok) { D.settings = r.settings; fillSettings(); toast("Removed."); }
+  }));
+  $("file").onchange = () => {
+    const f = $("file").files[0];
+    if (!f) return;
+    if (f.size > 3 * 1024 * 1024) return toast("That image is too big. The limit is 3 MB.", true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const shapeTip = await checkShape(pickSlot, reader.result);
+      toast("Uploading…");
+      const r = await call("upload", { slot: pickSlot, data: reader.result });
+      if (!r.ok) return;
+      if (pickSlot === "prize") { prizeUrl = r.url; setPv("pvPrize", r.url, "No image"); toast(shapeTip ? "Prize image ready. " + shapeTip : "Prize image ready.", !!shapeTip); return; }
+      D.settings[pickSlot] = r.url;
+      fillSettings();
+      toast(shapeTip ? "Image saved. " + shapeTip : "Image saved.", !!shapeTip);
+    };
+    reader.readAsDataURL(f);
+  };
+
+  const SIZES = {
+    banner: { w: 1600, h: 300, name: "banners" },
+    avatar: { w: 400, h: 400, name: "profile pictures" },
+    background_image: { w: 1920, h: 1080, name: "backgrounds" },
+    points_icon: { w: 64, h: 64, name: "points icons" },
+    prize: { w: 1200, h: 600, name: "prize images" },
+  };
+  function checkShape(slot, dataUrl) {
+    const want = SIZES[slot];
+    if (!want) return Promise.resolve("");
+    return new Promise((done) => {
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        const ratio = (w / h) / (want.w / want.h);
+        const best = `${want.w} × ${want.h}`;
+        if (ratio > 1.6 || ratio < 0.62) done(`It's ${w} × ${h}, so parts will be cropped. ${best} works best for ${want.name}.`);
+        else if (w < want.w / 2) done(`It's only ${w} × ${h}, so it may look blurry. ${best} works best.`);
+        else done("");
+      };
+      img.onerror = () => done("");
+      img.src = dataUrl;
+    });
+  }
+
+  $("save").onclick = async (e) => {
+    const r = await call("save-page", {
+      page: {
+        accent: $("accent").value, background: $("background").value, about: $("about").value,
+        chat_start: $("chatStart").checked, chat_entry: $("chatEntry").checked,
+        chat_winner: $("chatWinner").checked, site_url: PAGE_URL,
+      },
+    }, e.target);
+    if (r.ok) { D.settings = r.settings; fillSettings(); toast("Saved."); }
+  };
+  $("accent").oninput = () => WG.theme({ ...D.settings, accent: $("accent").value, background: $("background").value });
+  $("background").oninput = $("accent").oninput;
+
+  $("start").onclick = async (e) => {
+    const draw = $("gDraw").value ? new Date($("gDraw").value).toISOString() : null;
+    const r = await call("start", {
+      title: $("gTitle").value, description: $("gDesc").value, ticket_cost: $("gCost").value, max_tickets: $("gMax").value,
+      draw_at: draw, prize_image: prizeUrl, site_url: PAGE_URL,
+    }, e.target);
+    if (r.ok) {
+      toast("Giveaway started.");
+      $("gTitle").value = ""; $("gDesc").value = ""; $("gDraw").value = ""; prizeUrl = ""; setPv("pvPrize", "", "No image");
+      load();
+    }
+  };
+
+  let pending = null;
+  function ask(text, fn) {
+    pending = fn;
+    $("confirmText").textContent = text;
+    $("confirmBox").hidden = false;
+  }
+  $("confirmNo").onclick = () => { pending = null; $("confirmBox").hidden = true; };
+  $("confirmYes").onclick = async () => { $("confirmBox").hidden = true; const fn = pending; pending = null; if (fn) await fn(); };
+
+  async function draw(btn) {
+    const r = await call("draw", {}, btn);
+    if (r.ok) { toast(`Winner: ${r.winner}`); load(); }
+  }
+  $("draw").onclick = (e) => draw(e.target);
+  $("redraw").onclick = (e) => ask("Draw someone else?", () => draw(e.target));
+  $("cancel").onclick = (e) => ask(`Cancel and give everyone their ${D.settings.points_name} back?`, async () => {
+    const r = await call("cancel", {}, e.target);
+    if (r.ok) { toast(`Cancelled. Refunded ${WG.plural(r.refunded, "viewer")}.`); load(); }
+  });
+  $("finish").onclick = async (e) => { if ((await call("finish", {}, e.target)).ok) load(); };
+
+  $("gpGo").onclick = async (e) => {
+    const r = await call("points", { login: $("gpName").value, amount: $("gpAmount").value }, e.target);
+    if (r.ok) { toast(`${r.name} now has ${WG.fmt(r.points)} ${D.settings.points_name}.`); $("gpAmount").value = ""; }
+  };
+  $("gpCheck").onclick = async (e) => {
+    const r = await call("lookup", { login: $("gpName").value }, e.target);
+    if (r.ok) toast(r.viewer ? `${r.viewer.display_name || r.viewer.login} has ${WG.fmt(r.viewer.points)} ${D.settings.points_name}.` : "They don't have any points yet.");
+  };
+
+  $("syncCopy").onclick = () => copy("syncLink");
+  $("syncNew").onclick = (e) => ask("Make a new Streamer.bot link? The old one stops working, so paste the new one into the FFY_Points Builder and import again.", async () => {
+    const r = await call("new-sync-key", {}, e.target);
+    if (r.ok) { D.syncLink = r.syncLink; $("syncLink").value = r.syncLink; toast("New link made."); }
+  });
+
+  async function copy(id) {
+    const el = $(id);
+    try { await navigator.clipboard.writeText(el.value); toast("Copied."); }
+    catch { el.select(); toast("Press Ctrl+C to copy."); }
+  }
+  $("ovCopy").onclick = () => copy("ovLink");
+  $("pageCopy").onclick = () => copy("pageLink");
+  $("ovTest").onclick = async (e) => { if ((await call("test-overlay", {}, e.target)).ok) toast("Test winner sent to the overlay."); };
+  $("ovNew").onclick = (e) => ask("Make a new link? The old one stops working, so update OBS.", async () => {
+    const r = await call("new-overlay-key", {}, e.target);
+    if (r.ok) { D.overlayKey = r.overlayKey; fillSettings(); toast("New link made. Paste it into OBS."); }
+  });
+
+  connectResult();
+  load();
+  setInterval(refresh, 15000);
+})();
+</script>
+</body>
+</html>
